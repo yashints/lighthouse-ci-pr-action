@@ -1,21 +1,37 @@
 name: Lighthouse CI
+
 on:
   pull_request:
     branches: [master]
+
 jobs:
   lighthouse:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v2
-      - name: Build the app
+      - name: Setup Node 12
         uses: actions/setup-node@v1
         with:
           node-version: 12.x
-      - run: npm ci
-      - run: npm run build
+      - name: Yarn Install and Build
+        run: |
+          yarn
+          yarn build
       
+      - name: Waiting for 200 from the Netlify Preview
+        uses: jakepartusch/wait-for-netlify-action@v1
+        id: waitFor200
+        with:
+          site_name: "lighthouse-ci-pr"
+
       - name: Audit URLs using Lighthouse
         uses: treosh/lighthouse-ci-action@v2
         with:
-          configPath: './lighthouserc.json'
-          budgetPath: ./budget.json'
+          urls: |
+            $DEPLOY_URL/
+            $DEPLOY_URL/about
+          runs: 3
+          budgetPath: ./budget.json
+        env:
+          DEPLOY_URL: ${{ steps.waitFor200.outputs.url }}
